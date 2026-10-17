@@ -78,7 +78,7 @@ Before a recording is saved, rerecord:
 - drops everything from before recording started, including your login
 - removes cookies and `Authorization` headers
 - pushes JWT expiry to 2100, so a saved login never looks expired on replay
-- refuses to save at all if a request carries a password
+- refuses to save at all if a password is typed into the page or sent in a request while recording, and warns you the moment it happens, so you can stop and record again
 - keeps each request's answers in the order they arrived, collapsing identical repeats, so a list shown before and after a save replays correctly
 
 Everything else is saved exactly as your app received it: names, emails, IDs and any secret values your API returns. Record on an instance with fake data, because what you record is what gets committed.

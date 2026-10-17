@@ -12,10 +12,15 @@ export const SHOT_LABEL = "rerecord-shot";
 
 export const installShotControls = async (
   context: BrowserContext,
-  { onPointer, onShot }: { onPointer: (pointer: Pointer) => void; onShot: (hover: Point | null) => number }
+  {
+    onPointer,
+    onShot,
+    onPasswordTyped
+  }: { onPointer: (pointer: Pointer) => void; onShot: (hover: Point | null) => number; onPasswordTyped: () => void }
 ) => {
   await context.exposeBinding("__rerecordPointer", (_source, pointer: Pointer) => onPointer(pointer));
   await context.exposeBinding("__rerecordShot", (_source, hover: Point | null) => onShot(hover));
+  await context.exposeBinding("__rerecordPasswordTyped", () => onPasswordTyped());
   await context.addInitScript(`window.__rerecordDescribeAt = ${describeAt.toString()};`);
 
   await context.addInitScript((label) => {
@@ -24,8 +29,20 @@ export const installShotControls = async (
       __rerecordDescribeAt: (at: { x: number; y: number }) => string;
       __rerecordPointer: (pointer: { at: { x: number; y: number }; under: string }) => Promise<void>;
       __rerecordShot: (at: { x: number; y: number } | null) => Promise<number>;
+      __rerecordPasswordTyped: () => Promise<void>;
     };
     const pageWindow = window as unknown as PageWindow;
+    // The recorder saves typed text as fill steps, so a password typed into the page would end up in
+    // scene.json.
+    window.addEventListener(
+      "input",
+      (event) => {
+        if (event.target instanceof HTMLInputElement && event.target.type === "password") {
+          void pageWindow.__rerecordPasswordTyped();
+        }
+      },
+      true
+    );
     window.addEventListener(
       "pointerdown",
       (event) => {

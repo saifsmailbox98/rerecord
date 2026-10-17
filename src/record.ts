@@ -41,6 +41,14 @@ export const record = async (config: ResolvedConfig, { name = stampedName(), url
 
   const steps: (Step | null)[] = [];
   let lastPointer: Pointer | null = null;
+  // Set once recording starts, so the login before it never trips the password checks.
+  let isRecording = false;
+  let passwordProblem: string | null = null;
+  const flagPassword = (what: string) => {
+    if (!isRecording || passwordProblem) return;
+    passwordProblem = what;
+    console.log(`  ⚠ ${what}, so this recording can't be saved. Close the window, then record again without it.`);
+  };
 
   // The raw recording holds cookies, tokens and real emails, so it is written outside the project
   // and only its scrubbed copy reaches the scene folder.
@@ -69,6 +77,7 @@ export const record = async (config: ResolvedConfig, { name = stampedName(), url
       onPointer: (pointer) => {
         lastPointer = pointer;
       },
+      onPasswordTyped: () => flagPassword("A password was typed into the page"),
       onShot: (hover) => {
         const output = `${stampedName()}.png`;
         steps.push(hover ? { shot: output, hover } : { shot: output });
@@ -98,7 +107,14 @@ export const record = async (config: ResolvedConfig, { name = stampedName(), url
       if (config.saveSessionOn(response.url())) void saveSession(context).catch(() => {});
     });
 
+    context.on("request", (request) => {
+      if (request.url().startsWith(origin + config.apiPrefix) && /"password"\s*:/.test(request.postData() ?? "")) {
+        flagPassword("A request just sent a password");
+      }
+    });
+
     await startRecorder(context, { steps, origin, lastPointer: () => lastPointer });
+    isRecording = true;
     console.log(`Recording from ${startUrl}. Press 📸 Shot for each image, then close the window or press Ctrl+C.`);
 
     await new Promise<void>((resolve) => {
@@ -120,6 +136,9 @@ export const record = async (config: ResolvedConfig, { name = stampedName(), url
     const recorded = steps.filter((step): step is Step => step !== null);
     // The recorder reports the page it starts on as a navigation, and startUrl already covers it.
     if (recorded[0] && "goto" in recorded[0] && recorded[0].goto === startUrl) recorded.shift();
+    if (passwordProblem) {
+      throw new Error(`${passwordProblem} while recording, so nothing was saved. Log in before recording starts, and leave password fields out of a scene.`);
+    }
     if (!recorded.some((step) => "shot" in step)) throw new Error("No shots taken, so nothing was saved.");
     if (!existsSync(rawHarPath)) throw new Error("The browser closed before its network log was saved.");
 
