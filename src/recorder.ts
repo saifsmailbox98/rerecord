@@ -39,11 +39,11 @@ const toStep = (action: RecordedAction, pointer: Pointer | null, origin: string)
   const target = action.selector ? { selector: action.selector } : undefined;
   if (action.selector?.includes(SHOT_LABEL)) return null;
   const isFragile = Boolean(action.selector) && !isStableSelector(action.selector ?? "");
-  // A fragile selector falls back to the spot and what was there. Every other click keeps just the
-  // spot, because where inside an element you click can matter (a dialog's backdrop closes it, its
-  // middle does not).
+  // Every click keeps its spot and what was under the pointer there. Where you click can matter (a
+  // dialog's backdrop closes it, its middle does not), and the recorder sometimes names the wrong
+  // element: a click on a Radix backdrop is reported as a click on the dialog itself.
   const position = isFragile && pointer ? pointer : {};
-  const spot = pointer ? (isFragile ? pointer : { at: pointer.at }) : {};
+  const spot = pointer ?? {};
   switch (action.name) {
     case "click":
     case "check":
@@ -78,7 +78,7 @@ export const normalizedSelector = async (page: Page, selector: string) => {
 };
 
 // A step that fell back to a position gets the normalized selector in its place when there is one.
-// A click keeps its spot inside the element; a fill has no use for it.
+// A click keeps its spot and what was there; a fill has no use for either.
 const improve = async (page: Page, steps: (Step | null)[], index: number) => {
   const step = steps[index];
   if (!step || !("click" in step || "fill" in step)) return;
@@ -88,8 +88,7 @@ const improve = async (page: Page, steps: (Step | null)[], index: number) => {
   const better = await normalizedSelector(page, target.selector);
   if (!better || steps[index] !== step) return;
   if ("click" in step) {
-    const { under: _under, ...rest } = step;
-    steps[index] = { ...rest, click: { selector: better } };
+    steps[index] = { ...step, click: { selector: better } };
   } else {
     const { at: _at, under: _under, ...rest } = step;
     steps[index] = { ...rest, fill: { selector: better } };

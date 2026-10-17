@@ -95,15 +95,19 @@ const onceUnambiguous = async (action: () => Promise<void>) => {
   }
 };
 
-// Clicks where the click was recorded inside the element, while that spot still falls inside it;
-// a moved or resized element is clicked in its middle, as a plain locator click would.
-const clickInside = (page: Page, target: Target, at: Point) =>
+// Clicks where the click was recorded. Inside the element, that spot is clicked. Outside it, the
+// spot is still clicked if the same thing is under it as when recording: the recorder named the
+// wrong element (a Radix backdrop click is reported as a click on the dialog). Otherwise the
+// element moved, and its middle is clicked as a plain locator click would.
+const clickRecordedSpot = (page: Page, target: Target, at: Point, under?: string) =>
   onceUnambiguous(async () => {
     const locator = locate(page, target);
     await locator.waitFor();
     const box = await locator.boundingBox();
     const isInside = box && at.x >= box.x && at.x <= box.x + box.width && at.y >= box.y && at.y <= box.y + box.height;
-    await locator.click(isInside ? { position: { x: at.x - box.x, y: at.y - box.y } } : undefined);
+    if (isInside) return locator.click({ position: { x: at.x - box.x, y: at.y - box.y } });
+    if (under && (await page.evaluate(describeAt, at)) === under) return page.mouse.click(at.x, at.y);
+    return locator.click();
   });
 
 const isFragileTarget = (target: Target) => "selector" in target && !isStableSelector(target.selector);
@@ -113,7 +117,7 @@ export const runStep = async (page: Page, step: Step, onShot: (output: string) =
     await page.goto(step.goto);
   } else if ("click" in step) {
     if (step.at && isFragileTarget(step.click)) await clickPosition(page, step.click, step.at, step.under);
-    else if (step.at) await clickInside(page, step.click, step.at);
+    else if (step.at) await clickRecordedSpot(page, step.click, step.at, step.under);
     else await onceUnambiguous(() => locate(page, step.click).click());
   } else if ("fill" in step) {
     if (step.at) {

@@ -7,6 +7,9 @@
     <div id="intro" role="dialog" aria-label="Intro" style="display: none; position: fixed; inset: 0; background: #0008">
       <div style="margin: 40px; height: 120px; background: #eee">Card</div>
     </div>
+    <button id="open-modal">Open modal</button>
+    <div id="overlay" style="display: none; position: fixed; inset: 0; z-index: 1; background: #0008"></div>
+    <div id="modal" role="dialog" aria-label="Modal" style="display: none; position: fixed; left: 150px; top: 50px; width: 100px; height: 60px; z-index: 2; background: #eee">Card</div>
     <script>
       const load = () =>
         fetch("/api/thing")
@@ -18,6 +21,17 @@
       document.getElementById("open").addEventListener("click", () => (intro.style.display = "block"));
       // Like a modal's backdrop: a click outside the card closes it, a click on the card does not.
       intro.addEventListener("click", (event) => event.target === intro && (intro.style.display = "none"));
+      // Like a Radix dialog: the backdrop is a sibling of the dialog, not part of it, and clicking it closes both.
+      const overlay = document.getElementById("overlay");
+      const modal = document.getElementById("modal");
+      document.getElementById("open-modal").addEventListener("click", () => {
+        overlay.style.display = "block";
+        modal.style.display = "block";
+      });
+      overlay.addEventListener("click", () => {
+        overlay.style.display = "none";
+        modal.style.display = "none";
+      });
     </script>
   </body>
 </html>

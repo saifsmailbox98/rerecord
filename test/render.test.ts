@@ -26,6 +26,14 @@ test("a click lands where it was recorded inside the element, not in its middle"
   assert.ok(existsSync(shot));
 });
 
+test("a click recorded on a dialog but landing on its sibling backdrop replays at that spot", async () => {
+  // Playwright's recorder names the dialog for a click on a Radix backdrop, though the spot lies
+  // outside the dialog. The spot still holds what was recorded there, so it is clicked, not the
+  // dialog's middle.
+  const [shot] = await render(config, "sibling-backdrop");
+  assert.ok(existsSync(shot));
+});
+
 test("fails loudly when the app asks for an answer the scene never recorded", async () => {
   await assert.rejects(render(config, "missing"), /never recorded[\s\S]*GET \/api\/thing/);
 });
@@ -36,7 +44,7 @@ test("the CLI rerecords every scene and reports the failing one", () => {
     encoding: "utf8"
   });
   assert.equal(result.status, 1, result.stderr);
-  assert.match(result.stdout, /2 of 3 scenes rerecorded/);
+  assert.match(result.stdout, /3 of 4 scenes rerecorded/);
   assert.match(result.stderr, /Failed: missing/);
 });
 
