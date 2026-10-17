@@ -1,0 +1,15 @@
+<!doctype html>
+<html>
+  <body>
+    <p id="answer">loading</p>
+    <button id="again">Again</button>
+    <script>
+      const load = () =>
+        fetch("/api/thing")
+          .then((response) => response.json())
+          .then((data) => (document.getElementById("answer").textContent = data.text));
+      load();
+      document.getElementById("again").addEventListener("click", load);
+    </script>
+  </body>
+</html>

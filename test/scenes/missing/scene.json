@@ -1,0 +1,13 @@
+{
+  "startUrl": "/",
+  "viewport": {
+    "width": 400,
+    "height": 200
+  },
+  "frozenTime": "2026-01-15T09:00:00Z",
+  "steps": [
+    {
+      "shot": "missing.png"
+    }
+  ]
+}

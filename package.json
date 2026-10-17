@@ -1,0 +1,46 @@
+{
+  "name": "rerecord",
+  "version": "0.1.0",
+  "description": "Docs screenshots that redraw themselves: record a flow in your running app once, then re-render the screenshots from your current build with no backend.",
+  "keywords": [
+    "screenshots",
+    "documentation",
+    "docs",
+    "playwright",
+    "har",
+    "spa"
+  ],
+  "license": "MIT",
+  "author": "Saif Ur Rahman",
+  "type": "module",
+  "bin": {
+    "rerecord": "dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22.18.0"
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "type:check": "tsc",
+    "test": "node --test test/*.test.ts",
+    "prepublishOnly": "npm run type:check && npm test && npm run build"
+  },
+  "dependencies": {
+    "playwright": "1.60.0"
+  },
+  "devDependencies": {
+    "@types/node": "22.15.3",
+    "typescript": "5.9.3"
+  }
+}
