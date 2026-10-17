@@ -7,12 +7,17 @@ import type { Point, Step, Target } from "./scene.ts";
 
 type Role = Parameters<Page["getByRole"]>[0];
 
-// Clicking a position does not wait for the element the way a locator does, so give the page
-// time to finish rendering what the previous step opened.
-const POSITION_SETTLE_MS = 700;
+// A blank click has nothing to wait for (the spot may legitimately fill up), so it gives the page a
+// moment to finish rendering what the previous step opened.
+const BLANK_SETTLE_MS = 700;
 
-// Tooltips and hover cards open after a delay (Radix waits 700ms by default).
-const HOVER_SETTLE_MS = 1200;
+// How long a position click waits for what was recorded there to appear.
+const POSITION_WAIT_MS = 5000;
+
+// Tooltips and hover cards open after a delay (Radix waits 700ms by default). Render's clock is
+// frozen, so it is run forward this far and the tooltip opens without a real wait.
+const HOVER_CLOCK_MS = 1200;
+const HOVER_PAINT_MS = 150;
 
 // How long a step may wait for a selector that still matches several elements to settle on one.
 const AMBIGUOUS_WAIT_MS = 5000;
@@ -45,16 +50,30 @@ const isBlank = (description: string) => /^(html|body) /.test(description);
 const isBlankClick = (target: Target, under?: string) =>
   "selector" in target && (target.selector === "html" || target.selector === "body") && (!under || isBlank(under));
 
+// Polls what is at `at` until it matches what was there when recording, or gives up.
+const waitForElementAt = async (page: Page, at: Point, under: string) => {
+  const deadline = Date.now() + POSITION_WAIT_MS;
+  for (;;) {
+    const found = await page.evaluate(describeAt, at);
+    if (found === under) return;
+    if (Date.now() > deadline) {
+      throw new Error(
+        `The UI moved: expected ${under} at ${Math.round(at.x)},${Math.round(at.y)} but found ${found}. Record this scene again.`
+      );
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+};
+
 // Returns false when a recorded blank click is skipped because something is there now.
 const clickPosition = async (page: Page, target: Target, at: Point, under?: string) => {
-  await page.waitForTimeout(POSITION_SETTLE_MS);
-  const found = await page.evaluate(describeAt, at);
   if (isBlankClick(target, under)) {
-    if (!isBlank(found)) return false;
-  } else if (under && found !== under) {
-    throw new Error(
-      `The UI moved: expected ${under} at ${Math.round(at.x)},${Math.round(at.y)} but found ${found}. Record this scene again.`
-    );
+    await page.waitForTimeout(BLANK_SETTLE_MS);
+    if (!isBlank(await page.evaluate(describeAt, at))) return false;
+  } else if (under) {
+    await waitForElementAt(page, at, under);
+  } else {
+    await page.waitForTimeout(BLANK_SETTLE_MS);
   }
   await page.mouse.click(at.x, at.y);
   return true;
@@ -103,7 +122,8 @@ export const runStep = async (page: Page, step: Step, onShot: (output: string) =
     await page.waitForTimeout(SETTLE_MS);
     if (step.hover) {
       await page.mouse.move(step.hover.x, step.hover.y);
-      await page.waitForTimeout(HOVER_SETTLE_MS);
+      await page.clock.runFor(HOVER_CLOCK_MS);
+      await page.waitForTimeout(HOVER_PAINT_MS);
     }
     await onShot(step.shot);
   }

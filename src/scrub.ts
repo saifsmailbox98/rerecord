@@ -1,6 +1,6 @@
-// Cleans a fresh recording before it is saved: drops what happened before recording started (such as
-// a login), removes cookies and auth headers, points URLs at the render address, and keeps each
-// request's answers in order, minus repeats. The data itself is saved as recorded.
+// Cleans a fresh recording before it is saved: removes cookies and auth headers, points URLs at the
+// render address, and keeps each request's answers in order, minus repeats. The data itself is saved
+// as recorded.
 
 import { writeFileSync } from "node:fs";
 
@@ -61,23 +61,13 @@ const stripHeaders = (entry: HarEntry) => {
 
 // Reads the raw recording from `rawPath` and writes the cleaned one to `outPath`, so the raw file
 // can live outside the project and never be committed by accident.
-export const scrubHar = ({
-  rawPath,
-  outPath,
-  fromOrigin,
-  recordingStarted
-}: {
-  rawPath: string;
-  outPath: string;
-  fromOrigin: string;
-  recordingStarted: Date;
-}) => {
+export const scrubHar = ({ rawPath, outPath, fromOrigin }: { rawPath: string; outPath: string; fromOrigin: string }) => {
   const har = readHar(rawPath);
   // A request cut off mid-flight (by a reload or a closed tab) is logged with status -1, or with a
   // status but no body (content size -1); replaying either would hand the app a broken answer.
   const isAnswered = (entry: HarEntry) => entry.response.status >= 100 && entry.response.content.size >= 0;
   const entries = har.log.entries
-    .filter((entry) => new Date(entry.startedDateTime) >= recordingStarted && isAnswered(entry))
+    .filter(isAnswered)
     .sort((a, b) => Date.parse(a.startedDateTime) - Date.parse(b.startedDateTime));
   if (entries.some((entry) => /"password"\s*:/.test(entry.request.postData?.text ?? ""))) {
     throw new Error("A request in the recording carries a password, so nothing was saved. Log in before recording starts.");

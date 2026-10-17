@@ -62,9 +62,7 @@ export const record = async (config: ResolvedConfig, { name = stampedName(), url
       baseURL: origin,
       viewport: config.viewport,
       locale: "en-US",
-      timezoneId: "UTC",
-      // Anchored on the origin: dev servers can serve source files whose paths also contain the prefix.
-      recordHar: { path: rawHarPath, urlFilter: new RegExp(`^${escapeRegExp(origin + config.apiPrefix)}`), content: "embed" }
+      timezoneId: "UTC"
     });
     try {
       assertRecorderAvailable(context);
@@ -95,9 +93,14 @@ export const record = async (config: ResolvedConfig, { name = stampedName(), url
     await page.waitForLoadState("load");
     await saveSession(context);
 
-    // Reloading gives the scene a clean first load: scrub keeps only what was asked from here on, so
-    // a login typed into the window or a stale-session 401 never reaches the recording.
+    // The network log starts here and the page reloads into it, so the scene gets a clean first load
+    // and a login typed into the window, or a stale-session 401, never reaches the recording.
     const recordingStarted = new Date();
+    await context.tracing.startHar(rawHarPath, {
+      content: "embed",
+      // Anchored on the origin: dev servers can serve source files whose paths also contain the prefix.
+      urlFilter: new RegExp(`^${escapeRegExp(origin + config.apiPrefix)}`)
+    });
     await page.reload();
     await page.waitForLoadState("load");
     const startUrl = page.url().replace(origin, "");
@@ -113,7 +116,7 @@ export const record = async (config: ResolvedConfig, { name = stampedName(), url
       }
     });
 
-    await startRecorder(context, { steps, origin, lastPointer: () => lastPointer });
+    const recorderSettled = await startRecorder(context, { steps, origin, lastPointer: () => lastPointer });
     isRecording = true;
     console.log(`Recording from ${startUrl}. Press 📸 Shot for each image, then close the window or press Ctrl+C.`);
 
@@ -127,9 +130,10 @@ export const record = async (config: ResolvedConfig, { name = stampedName(), url
       page.on("close", finishIfNoPages);
       context.on("page", (opened) => opened.on("close", finishIfNoPages));
     });
+    await recorderSettled();
     // After Ctrl+C the browser may already be going down; the cookie was saved as it rotated.
     await saveSession(context).catch(() => {});
-    // Closing the context is what writes the recording.
+    await context.tracing.stopHar().catch(() => {});
     await context.close().catch(() => {});
     await browser.close().catch(() => {});
 
@@ -143,12 +147,7 @@ export const record = async (config: ResolvedConfig, { name = stampedName(), url
     if (!existsSync(rawHarPath)) throw new Error("The browser closed before its network log was saved.");
 
     mkdirSync(sceneDir, { recursive: true });
-    const { entries } = scrubHar({
-      rawPath: rawHarPath,
-      outPath: path.join(sceneDir, "network.har"),
-      fromOrigin: origin,
-      recordingStarted
-    });
+    const { entries } = scrubHar({ rawPath: rawHarPath, outPath: path.join(sceneDir, "network.har"), fromOrigin: origin });
     const scene: SceneFile = {
       version: SCENE_VERSION,
       startUrl,
