@@ -1,6 +1,6 @@
 {
   "name": "rerecord",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Docs screenshots that redraw themselves: record a flow in your running app once, then re-render the screenshots from your current build with no backend.",
   "keywords": [
     "screenshots",
