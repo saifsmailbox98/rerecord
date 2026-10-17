@@ -85,7 +85,7 @@ Everything else is saved exactly as your app received it: names, emails, IDs and
 
 ## Replays that hold up
 
-- Steps use Playwright's accessible selectors (role and name, label, placeholder, text).
+- Steps use Playwright's accessible selectors (role and name, label, placeholder, text), and each click also keeps where inside the element it landed: a replay clicks that same spot while it is still inside the element (a dialog's backdrop closes it, its middle may not), and the middle if the element moved.
 - Where the recorder only finds CSS classes, rerecord asks Playwright to rewrite the selector into its text or role form. Only when the element is already gone (an option in a menu that closed) does the step fall back to where you clicked and what was there; a replay then waits for that same thing to appear at that spot, and fails loudly if it never does, so it never clicks the wrong thing.
 - Hover shots fast-forward the frozen clock, so tooltips with an open delay appear without waiting for them in real time.
 - A click on empty page (to close a menu) replays only if that spot is still empty.

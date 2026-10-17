@@ -4,6 +4,7 @@
 import type { Locator, Page } from "playwright";
 
 import type { Point, Step, Target } from "./scene.ts";
+import { isStableSelector } from "./scene.ts";
 
 type Role = Parameters<Page["getByRole"]>[0];
 
@@ -94,11 +95,25 @@ const onceUnambiguous = async (action: () => Promise<void>) => {
   }
 };
 
+// Clicks where the click was recorded inside the element, while that spot still falls inside it;
+// a moved or resized element is clicked in its middle, as a plain locator click would.
+const clickInside = (page: Page, target: Target, at: Point) =>
+  onceUnambiguous(async () => {
+    const locator = locate(page, target);
+    await locator.waitFor();
+    const box = await locator.boundingBox();
+    const isInside = box && at.x >= box.x && at.x <= box.x + box.width && at.y >= box.y && at.y <= box.y + box.height;
+    await locator.click(isInside ? { position: { x: at.x - box.x, y: at.y - box.y } } : undefined);
+  });
+
+const isFragileTarget = (target: Target) => "selector" in target && !isStableSelector(target.selector);
+
 export const runStep = async (page: Page, step: Step, onShot: (output: string) => Promise<void>) => {
   if ("goto" in step) {
     await page.goto(step.goto);
   } else if ("click" in step) {
-    if (step.at) await clickPosition(page, step.click, step.at, step.under);
+    if (step.at && isFragileTarget(step.click)) await clickPosition(page, step.click, step.at, step.under);
+    else if (step.at) await clickInside(page, step.click, step.at);
     else await onceUnambiguous(() => locate(page, step.click).click());
   } else if ("fill" in step) {
     if (step.at) {

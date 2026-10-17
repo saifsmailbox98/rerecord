@@ -27,6 +27,12 @@ export type Step =
   // `shot` is a file name inside the config's outputDir.
   | { shot: string; hover?: Point };
 
+// Selectors built from roles, labels, placeholders, test ids or text survive a UI change. When an
+// element has none of those, the recorder falls back to CSS classes and positions (sometimes
+// focus-only classes such as border-ring), which do not even match on the next run.
+export const isStableSelector = (selector: string) =>
+  /^internal:(role|label|testid|text|attr=\[placeholder)/.test(selector) && !/(^|\s)\./.test(selector);
+
 export const SCENE_VERSION = 1;
 
 export type SceneFile = {

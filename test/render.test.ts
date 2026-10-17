@@ -19,6 +19,13 @@ test("replays repeated requests in recorded order", async () => {
   assert.notDeepEqual(readFileSync(first), readFileSync(second));
 });
 
+test("a click lands where it was recorded inside the element, not in its middle", async () => {
+  // The recorded spot is the dialog's backdrop, which closes it; its middle is the card, which does
+  // not, and the next click would then be blocked by the dialog.
+  const [shot] = await render(config, "backdrop");
+  assert.ok(existsSync(shot));
+});
+
 test("fails loudly when the app asks for an answer the scene never recorded", async () => {
   await assert.rejects(render(config, "missing"), /never recorded[\s\S]*GET \/api\/thing/);
 });
@@ -29,7 +36,7 @@ test("the CLI rerecords every scene and reports the failing one", () => {
     encoding: "utf8"
   });
   assert.equal(result.status, 1, result.stderr);
-  assert.match(result.stdout, /1 of 2 scenes rerecorded/);
+  assert.match(result.stdout, /2 of 3 scenes rerecorded/);
   assert.match(result.stderr, /Failed: missing/);
 });
 

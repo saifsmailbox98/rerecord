@@ -1,0 +1,44 @@
+{
+  "startUrl": "/",
+  "viewport": {
+    "width": 400,
+    "height": 200
+  },
+  "frozenTime": "2026-01-15T09:00:00Z",
+  "steps": [
+    {
+      "waitFor": {
+        "text": "first answer"
+      }
+    },
+    {
+      "click": {
+        "role": "button",
+        "name": "Open intro"
+      }
+    },
+    {
+      "click": {
+        "selector": "internal:role=dialog[name=\"Intro\"i]"
+      },
+      "at": {
+        "x": 10,
+        "y": 190
+      }
+    },
+    {
+      "click": {
+        "role": "button",
+        "name": "Again"
+      }
+    },
+    {
+      "waitFor": {
+        "text": "second answer"
+      }
+    },
+    {
+      "shot": "backdrop.png"
+    }
+  ]
+}

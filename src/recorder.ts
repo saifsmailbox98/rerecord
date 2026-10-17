@@ -5,6 +5,7 @@
 import type { BrowserContext, Locator, Page } from "playwright";
 
 import type { Pointer, Step } from "./scene.ts";
+import { isStableSelector } from "./scene.ts";
 import { SHOT_LABEL } from "./shot-controls.ts";
 
 type RecordedAction = {
@@ -34,22 +35,20 @@ export const assertRecorderAvailable = (context: BrowserContext) => {
   }
 };
 
-// Selectors built from roles, labels, placeholders, test ids or text survive a UI change. When an
-// element has none of those, the recorder falls back to CSS classes and positions (sometimes
-// focus-only classes such as border-ring), which do not even match on the next run. Those
-// steps replay as a click on the same spot, checked against what was there when you clicked.
-const isStableSelector = (selector: string) =>
-  /^internal:(role|label|testid|text|attr=\[placeholder)/.test(selector) && !/(^|\s)\./.test(selector);
-
 const toStep = (action: RecordedAction, pointer: Pointer | null, origin: string): Step | null => {
   const target = action.selector ? { selector: action.selector } : undefined;
   if (action.selector?.includes(SHOT_LABEL)) return null;
-  const position = action.selector && !isStableSelector(action.selector) && pointer ? pointer : {};
+  const isFragile = Boolean(action.selector) && !isStableSelector(action.selector ?? "");
+  // A fragile selector falls back to the spot and what was there. Every other click keeps just the
+  // spot, because where inside an element you click can matter (a dialog's backdrop closes it, its
+  // middle does not).
+  const position = isFragile && pointer ? pointer : {};
+  const spot = pointer ? (isFragile ? pointer : { at: pointer.at }) : {};
   switch (action.name) {
     case "click":
     case "check":
     case "uncheck":
-      return target ? { click: target, ...position } : null;
+      return target ? { click: target, ...spot } : null;
     case "fill":
       return target ? { fill: target, value: action.text ?? "", ...position } : null;
     case "press":
@@ -79,15 +78,22 @@ export const normalizedSelector = async (page: Page, selector: string) => {
 };
 
 // A step that fell back to a position gets the normalized selector in its place when there is one.
+// A click keeps its spot inside the element; a fill has no use for it.
 const improve = async (page: Page, steps: (Step | null)[], index: number) => {
   const step = steps[index];
-  if (!step || !("at" in step) || !step.at || !("click" in step || "fill" in step)) return;
+  if (!step || !("click" in step || "fill" in step)) return;
   const target = "click" in step ? step.click : step.fill;
-  if (!("selector" in target) || target.selector === "html" || target.selector === "body") return;
+  if (!("selector" in target) || isStableSelector(target.selector)) return;
+  if (target.selector === "html" || target.selector === "body") return;
   const better = await normalizedSelector(page, target.selector);
   if (!better || steps[index] !== step) return;
-  const { at: _at, under: _under, ...rest } = step;
-  steps[index] = "click" in rest ? { ...rest, click: { selector: better } } : { ...rest, fill: { selector: better } };
+  if ("click" in step) {
+    const { under: _under, ...rest } = step;
+    steps[index] = { ...rest, click: { selector: better } };
+  } else {
+    const { at: _at, under: _under, ...rest } = step;
+    steps[index] = { ...rest, fill: { selector: better } };
+  }
 };
 
 // Appends each recorded action to `steps`, the same list shots go into, so the two keep their order.
