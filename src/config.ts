@@ -21,15 +21,13 @@ export type Config = {
   isReady?: (url: URL) => boolean;
   // Saves the session cookie whenever such a response arrives, for apps that rotate it.
   saveSessionOn?: (responseUrl: string) => boolean;
-  // Every email in a recording becomes this, except ones already on example.com.
-  fakeEmail?: string;
 };
 
 export const defineConfig = (config: Config) => config;
 
 export type ResolvedConfig = Required<Omit<Config, "build">> & {
   build: { command?: string[]; cwd: string; dist: string };
-  // Gitignored local state: the saved login and private scrub replacements.
+  // Gitignored local state: the saved login.
   stateDir: string;
 };
 
@@ -71,7 +69,6 @@ export const loadConfig = async (file?: string): Promise<ResolvedConfig> => {
     stubs: loaded.stubs ?? {},
     isReady: loaded.isReady ?? (() => true),
     saveSessionOn: loaded.saveSessionOn ?? (() => false),
-    fakeEmail: loaded.fakeEmail ?? "jane@example.com",
     stateDir: path.join(dir, ".rerecord")
   };
 };

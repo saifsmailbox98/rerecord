@@ -124,7 +124,7 @@ export const record = async (config: ResolvedConfig, { name = stampedName(), url
     if (!existsSync(rawHarPath)) throw new Error("The browser closed before its network log was saved.");
 
     mkdirSync(sceneDir, { recursive: true });
-    const { entries } = scrubHar(config, {
+    const { entries } = scrubHar({
       rawPath: rawHarPath,
       outPath: path.join(sceneDir, "network.har"),
       fromOrigin: origin,

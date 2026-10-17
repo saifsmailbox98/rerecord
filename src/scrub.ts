@@ -1,17 +1,14 @@
 // Cleans a fresh recording before it is saved: drops what happened before recording started (such as
-// a login), removes cookies and auth headers, swaps real emails for a fake one, points URLs at the
-// render address, and keeps each request's answers in order, minus repeats.
+// a login), removes cookies and auth headers, points URLs at the render address, and keeps each
+// request's answers in order, minus repeats. The data itself is saved as recorded.
 
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import path from "node:path";
+import { writeFileSync } from "node:fs";
 
-import type { ResolvedConfig } from "./config.ts";
 import { escapeRegExp, RENDER_ORIGIN } from "./config.ts";
 import type { HarEntry } from "./har.ts";
 import { readHar, requestKey } from "./har.ts";
 
 const JWT_RE = /eyJ[\w-]+\.eyJ[\w-]+\.[\w-]+/g;
-const EMAIL_RE = /[\w.+-]+@[\w-]+(\.[\w-]+)+/g;
 const SECRET_HEADERS = new Set(["cookie", "set-cookie", "authorization"]);
 // Scrubbing changes body lengths, and replay would otherwise send the recorded length.
 const STALE_HEADERS = new Set(["content-length", "content-encoding"]);
@@ -21,44 +18,19 @@ const FAR_FUTURE_EXP = 4102444800;
 const decodePart = (part: string) => JSON.parse(Buffer.from(part, "base64url").toString("utf8"));
 const encodePart = (value: unknown) => Buffer.from(JSON.stringify(value)).toString("base64url");
 
-// Private replacements (a real name -> a fake one) live in the gitignored state folder.
-const loadLocalReplacements = (config: ResolvedConfig): Record<string, string> => {
-  const file = path.join(config.stateDir, "replace.json");
-  return existsSync(file) ? JSON.parse(readFileSync(file, "utf8")) : {};
-};
-
-const scrubberFor = (config: ResolvedConfig, fromOrigin: string) => {
-  const replacements = Object.entries(loadLocalReplacements(config));
-  const realEmails = new Set<string>();
-
-  // Names and emails, wherever they appear in plain text (a token's decoded claims included).
-  const scrubPersonal = (text: string) => {
-    let out = text;
-    replacements.forEach(([real, fake]) => {
-      out = out.split(real).join(fake);
-    });
-    return out.replace(EMAIL_RE, (email) => (email.endsWith("@example.com") ? email : config.fakeEmail));
-  };
-
-  // A token's claims are base64, so the plain-text scrub never sees them: they are decoded, scrubbed
-  // and re-encoded here. The signature is dropped, since nothing checks it at render.
+const scrubberFor = (fromOrigin: string) => {
+  // The app checks a token's expiry with the real clock, so a saved login would expire on replay.
+  // The signature is dropped, since nothing checks it at render.
   const reforgeJwt = (token: string) => {
     const [header, payload] = token.split(".");
-    const claims = decodePart(payload);
-    if (typeof claims.email === "string") realEmails.add(claims.email);
-    const scrubbed = JSON.parse(scrubPersonal(JSON.stringify(claims)));
-    return [header, encodePart({ ...scrubbed, exp: FAR_FUTURE_EXP }), "rerecord"].join(".");
+    return [header, encodePart({ ...decodePart(payload), exp: FAR_FUTURE_EXP }), "rerecord"].join(".");
   };
 
-  const scrubText = (text: string) => {
-    let out = text.replace(JWT_RE, reforgeJwt);
-    out = out.split(fromOrigin).join(RENDER_ORIGIN);
+  return (text: string) => {
+    const out = text.replace(JWT_RE, reforgeJwt).split(fromOrigin).join(RENDER_ORIGIN);
     // Only the bare host itself: api.<host> belongs to another origin the app may also call.
-    out = out.replace(new RegExp(`(?<![\\w.-])${escapeRegExp(new URL(fromOrigin).host)}`, "g"), new URL(RENDER_ORIGIN).host);
-    return scrubPersonal(out);
+    return out.replace(new RegExp(`(?<![\\w.-])${escapeRegExp(new URL(fromOrigin).host)}`, "g"), new URL(RENDER_ORIGIN).host);
   };
-
-  return { scrubText, realEmails };
 };
 
 // A poll or refetch that got the same answer again adds nothing to replay, so only answers that
@@ -89,10 +61,17 @@ const stripHeaders = (entry: HarEntry) => {
 
 // Reads the raw recording from `rawPath` and writes the cleaned one to `outPath`, so the raw file
 // can live outside the project and never be committed by accident.
-export const scrubHar = (
-  config: ResolvedConfig,
-  { rawPath, outPath, fromOrigin, recordingStarted }: { rawPath: string; outPath: string; fromOrigin: string; recordingStarted: Date }
-) => {
+export const scrubHar = ({
+  rawPath,
+  outPath,
+  fromOrigin,
+  recordingStarted
+}: {
+  rawPath: string;
+  outPath: string;
+  fromOrigin: string;
+  recordingStarted: Date;
+}) => {
   const har = readHar(rawPath);
   // A request cut off mid-flight (by a reload or a closed tab) is logged with status -1, or with a
   // status but no body (content size -1); replaying either would hand the app a broken answer.
@@ -106,14 +85,7 @@ export const scrubHar = (
   har.log.entries = collapseRepeats(entries);
   har.log.entries.forEach(stripHeaders);
 
-  const { scrubText, realEmails } = scrubberFor(config, fromOrigin);
-  const text = scrubText(JSON.stringify(har, null, 2));
-  const decodedTokens = (text.match(JWT_RE) ?? []).map((token) => Buffer.from(token.split(".")[1], "base64url").toString());
-  const leaked = [...realEmails].filter(
-    (email) => email !== config.fakeEmail && [text, ...decodedTokens].some((part) => part.includes(email))
-  );
-  if (leaked.length) throw new Error(`Scrub left real emails behind: ${leaked.join(", ")}`);
-
+  const text = scrubberFor(fromOrigin)(JSON.stringify(har, null, 2));
   writeFileSync(outPath, `${text}\n`);
   return { entries: har.log.entries.length };
 };

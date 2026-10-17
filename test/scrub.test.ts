@@ -3,13 +3,9 @@ import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { test } from "node:test";
-import { fileURLToPath } from "node:url";
 
-import { loadConfig } from "../src/config.ts";
 import type { HarEntry } from "../src/har.ts";
 import { scrubHar } from "../src/scrub.ts";
-
-const config = await loadConfig(path.join(path.dirname(fileURLToPath(import.meta.url)), "rerecord.config.ts"));
 
 const APP = "https://app.test";
 const STARTED = new Date("2026-01-15T09:00:00Z");
@@ -34,11 +30,11 @@ const entry = (at: string, url: string, status: number, text: string, extra: Par
 const scrub = (entries: HarEntry[]) => {
   const dir = mkdtempSync(path.join(tmpdir(), "scrub-test-"));
   writeFileSync(path.join(dir, "raw.har"), JSON.stringify({ log: { entries } }));
-  scrubHar(config, { rawPath: path.join(dir, "raw.har"), outPath: path.join(dir, "out.har"), fromOrigin: APP, recordingStarted: STARTED });
+  scrubHar({ rawPath: path.join(dir, "raw.har"), outPath: path.join(dir, "out.har"), fromOrigin: APP, recordingStarted: STARTED });
   return JSON.parse(readFileSync(path.join(dir, "out.har"), "utf8")).log.entries as HarEntry[];
 };
 
-test("keeps only cleaned answers from after recording started, in order", () => {
+test("keeps the answers from after recording started, in order, minus credentials", () => {
   const me = `${APP}/api/me`;
   const body = JSON.stringify({ email: "real.user@corp.test", token: jwt, docs: `${APP}/settings`, api: "https://api.app.test/v1" });
   const changed = JSON.stringify({ email: "real.user@corp.test", plan: "pro" });
@@ -55,8 +51,8 @@ test("keeps only cleaned answers from after recording started, in order", () => 
     ["http://localhost:39999/api/me", "http://localhost:39999/api/me"]
   );
   const [first, second] = entries;
-  assert.ok(!JSON.stringify(entries).includes("real.user@corp.test"));
-  assert.match(first.response.content.text ?? "", /jane@example\.com/);
+  // The data is saved as recorded; only credentials and addresses change.
+  assert.match(first.response.content.text ?? "", /real\.user@corp\.test/);
   assert.match(second.response.content.text ?? "", /"plan":"pro"/);
 
   const text = JSON.parse(first.response.content.text ?? "{}");
@@ -64,7 +60,7 @@ test("keeps only cleaned answers from after recording started, in order", () => 
   assert.equal(text.api, "https://api.app.test/v1");
   const claims = JSON.parse(Buffer.from(text.token.split(".")[1], "base64url").toString());
   assert.equal(claims.exp, 4102444800);
-  assert.equal(claims.email, "jane@example.com");
+  assert.equal(claims.email, "real.user@corp.test");
 
   const headerNames = entries.flatMap((e) => [...e.request.headers, ...e.response.headers]).map((h) => h.name.toLowerCase());
   assert.deepEqual([...new Set(headerNames)], ["content-type"]);

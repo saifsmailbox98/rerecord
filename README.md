@@ -52,9 +52,8 @@ export default defineConfig({
 | `stubs` | `{}` | Fixed answers for files your server generates at runtime, keyed by path |
 | `isReady(url)` | always ready | Recording starts once this returns true, so your login never ends up in a scene |
 | `saveSessionOn(url)` | never | Saves the session cookie when such a response arrives, for apps that rotate it |
-| `fakeEmail` | `jane@example.com` | Every email in a recording becomes this, except ones already on `example.com` |
 
-Paths are relative to the config file. rerecord keeps a saved login and private replacements in `.rerecord/` next to the config; that folder ignores itself in git.
+Paths are relative to the config file. rerecord keeps your saved login in `.rerecord/` next to the config; that folder ignores itself in git.
 
 ## Commands
 
@@ -78,11 +77,11 @@ Before a recording is saved, rerecord:
 
 - drops everything from before recording started, including your login
 - removes cookies and `Authorization` headers
-- replaces every email with `fakeEmail`, inside JWTs too (their expiry is pushed to 2100 so they never look expired)
+- pushes JWT expiry to 2100, so a saved login never looks expired on replay
 - refuses to save at all if a request carries a password
 - keeps each request's answers in the order they arrived, collapsing identical repeats, so a list shown before and after a save replays correctly
 
-It does **not** recognise every secret. Record on an instance with fake data: whatever your API returns, secret values included, lands in the committed recording. For names, put `{ "Real Name": "Jane Doe" }` pairs in `.rerecord/replace.json`.
+Everything else is saved exactly as your app received it: names, emails, IDs and any secret values your API returns. Record on an instance with fake data, because what you record is what gets committed.
 
 ## Replays that hold up
 
