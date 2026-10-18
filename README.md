@@ -6,7 +6,7 @@ Docs screenshots that redraw themselves.
 
 One small UI change can leave hundreds of screenshots in your docs out of date at once. Retaking each one means setting up the right data, logins and credentials again, and nobody retakes a thousand screenshots in one sitting. rerecord records each flow in your running app once, then redraws every screenshot from your frontend build whenever you want. It's built on [Playwright](https://playwright.dev), using its recorder, HAR recording and request routing.
 
-<img src="https://cdn.jsdelivr.net/npm/rerecord@0.7.0/assets/card-commands.webp" alt="npx rerecord record records a scene in your running app, run once by whoever builds the feature. npx rerecord rerecord redraws every screenshot from the scenes, run any time by anyone, with only your frontend build" width="880">
+<img src="https://cdn.jsdelivr.net/npm/rerecord@0.7.1/assets/card-commands.webp" alt="npx rerecord record records a scene in your running app, run once by whoever builds the feature. npx rerecord rerecord redraws every screenshot from the scenes, run any time by anyone, with only your frontend build" width="880">
 
 ## What it solves
 
@@ -14,37 +14,37 @@ One small UI change can leave hundreds of screenshots in your docs out of date a
 
 A developer changes one class:
 
-<img src="https://cdn.jsdelivr.net/npm/rerecord@0.7.0/assets/card-button.webp" alt="The Create Session button before and after changing rounded-md to rounded-2xl" width="880">
+<img src="https://cdn.jsdelivr.net/npm/rerecord@0.7.1/assets/card-button.webp" alt="A button before and after changing rounded-md to rounded-2xl" width="880">
 
 `npx rerecord rerecord` then redraws every screenshot the button appears in:
 
-<img src="https://cdn.jsdelivr.net/npm/rerecord@0.7.0/assets/card-stale.webp" alt="Four screenshots with the old button, and the same four redrawn by npx rerecord rerecord" width="880">
+<img src="https://cdn.jsdelivr.net/npm/rerecord@0.7.1/assets/card-stale.webp" alt="Four screenshots with the old button, and the same four redrawn by npx rerecord rerecord" width="880">
 
 A redraw needs only your frontend build, the recorded steps and the recorded API responses:
 
-<img src="https://cdn.jsdelivr.net/npm/rerecord@0.7.0/assets/card-no-setup.webp" alt="Your frontend build plus the recorded steps and API responses; no backend, no database, no seed data, no shared instance" width="880">
+<img src="https://cdn.jsdelivr.net/npm/rerecord@0.7.1/assets/card-no-setup.webp" alt="Your frontend build plus the recorded steps and API responses; no backend, no database, no seed data, no shared instance" width="880">
 
 ### Set up once, by whoever builds the feature
 
 The developer building a feature already has the backend, data and any outside accounts running on their machine, so they record the screenshots then. After that, a teammate, CI or the same developer a year later can redraw or extend those screenshots without setting anything up, and nobody needs a shared instance:
 
-<img src="https://cdn.jsdelivr.net/npm/rerecord@0.7.0/assets/card-once.webp" alt="The developer building the feature records a scene once; a teammate, CI and the developer a year later redraw it with npx rerecord rerecord" width="880">
+<img src="https://cdn.jsdelivr.net/npm/rerecord@0.7.1/assets/card-once.webp" alt="The developer building the feature records a scene once; a teammate, CI and the developer a year later redraw it with npx rerecord rerecord" width="880">
 
 ### New screenshots need no setup
 
 To add a screen nobody recorded, edit the scene:
 
-<img src="https://cdn.jsdelivr.net/npm/rerecord@0.7.0/assets/card-unrecorded.webp" alt="A dialog that was never recorded, added with two steps and redrawn" width="880">
+<img src="https://cdn.jsdelivr.net/npm/rerecord@0.7.1/assets/card-unrecorded.webp" alt="A dialog that was never recorded, added with two steps and redrawn" width="880">
 
 If a screen needs a paid plan or running services, give it sample data in the recording instead:
 
-<img src="https://cdn.jsdelivr.net/npm/rerecord@0.7.0/assets/card-gated.webp" alt="An empty screen behind a paid plan, redrawn with sample data after editing the recorded API response" width="880">
+<img src="https://cdn.jsdelivr.net/npm/rerecord@0.7.1/assets/card-gated.webp" alt="An empty screen behind a paid plan, redrawn with sample data after editing the recorded API response" width="880">
 
 ### Demo data stays clean
 
 Scenes are text, so one find and replace fixes a name or email in every screenshot:
 
-<img src="https://cdn.jsdelivr.net/npm/rerecord@0.7.0/assets/card-data.webp" alt="A keyboard-mash name and email replaced with clean demo data" width="880">
+<img src="https://cdn.jsdelivr.net/npm/rerecord@0.7.1/assets/card-data.webp" alt="A keyboard-mash name and email replaced with clean demo data" width="880">
 
 ## How it works
 
