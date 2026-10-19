@@ -12,14 +12,17 @@ import { record } from "./record.ts";
 import { render } from "./render.ts";
 import { rerecord } from "./rerecord.ts";
 
+const ALIASES: Record<string, string> = { r: "record", rr: "rerecord" };
+
 const HELP = `rerecord: docs screenshots that redraw themselves
 
 Usage:
   rerecord record [name] [--url <path>]   Record a scene: click through your running app and
                                           press 📸 for each screenshot, then close the window.
+                                          Alias: r
   rerecord rerecord [name...] [--no-build]
                                           Redraw every scene (or the named ones) with your current
-                                          build. Needs no app or backend.
+                                          build. Needs no app or backend. Alias: rr
 
 Options:
   --config <file>   Config file (default: ./rerecord.config.ts, or $RERECORD_CONFIG)
@@ -56,7 +59,8 @@ const main = async () => {
     return fail(`${(error as Error).message}\n\n${HELP}`, 2);
   }
   const { values, positionals } = parsed;
-  const [command, ...names] = positionals;
+  const [typed, ...names] = positionals;
+  const command = ALIASES[typed] ?? typed;
   if (values.version) return console.log(version());
   if (values.help || !command) return console.log(HELP);
 

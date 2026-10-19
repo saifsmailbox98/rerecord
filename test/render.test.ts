@@ -48,6 +48,15 @@ test("the CLI rerecords every scene and reports the failing one", () => {
   assert.match(result.stderr, /Failed: missing/);
 });
 
+test("rr is an alias for rerecord", () => {
+  const result = spawnSync(process.execPath, [path.join(TEST_DIR, "../src/cli.ts"), "rr", "ordered"], {
+    cwd: TEST_DIR,
+    encoding: "utf8"
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /1 of 1 scenes rerecorded/);
+});
+
 test("the CLI explains itself when run with no command", () => {
   const result = spawnSync(process.execPath, [path.join(TEST_DIR, "../src/cli.ts")], { encoding: "utf8" });
   assert.equal(result.status, 0);

@@ -104,7 +104,7 @@ rerecord rerecord [name...] [--no-build]
 
 Redraws every scene, or only the named ones, with your current build. It records nothing and needs no app or backend. If the app now makes an API call that the scene never recorded, rerecord stops and names the call. Edit the scene's `network.har`, or record the scene again.
 
-Both commands take `--config <file>`, or read `RERECORD_CONFIG`.
+Both commands take `--config <file>`, or read `RERECORD_CONFIG`. `r` and `rr` are short for `record` and `rerecord`.
 
 ## What gets saved
 
